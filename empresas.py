@@ -9,7 +9,7 @@ from datetime import datetime
 router = APIRouter(prefix="/api/empresas", tags=["Empresas"])
 
 @router.post("/registrar", response_model=EmpresaResponse)
-async def registrar_empresa(empresa_data: EmpresaCreate):
+def registrar_empresa(empresa_data: EmpresaCreate):
     # Verificar si el email ya existe
     existing_empresa = empresas_collection.find_one({"email": empresa_data.email})
     if existing_empresa:
@@ -57,7 +57,7 @@ async def registrar_empresa(empresa_data: EmpresaCreate):
         )
 
 @router.get("/", response_model=list[EmpresaResponse])
-async def listar_empresas():
+def listar_empresas():
     try:
         empresas = list(empresas_collection.find())
         response = []

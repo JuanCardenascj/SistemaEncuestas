@@ -6,7 +6,7 @@ from app.models.pregunta import PreguntaCreate, PreguntaResponse
 router = APIRouter(prefix="/api/preguntas", tags=["Preguntas"])
 
 @router.post("/", response_model=PreguntaResponse)
-async def crear_pregunta(pregunta_data: PreguntaCreate):
+def crear_pregunta(pregunta_data: PreguntaCreate):
     try:
         # Verificar que la encuesta existe
         encuesta = encuestas_collection.find_one({"_id": pregunta_data.encuesta_id})
@@ -45,7 +45,7 @@ async def crear_pregunta(pregunta_data: PreguntaCreate):
         )
 
 @router.get("/encuesta/{encuesta_id}", response_model=List[PreguntaResponse])
-async def obtener_preguntas_encuesta(encuesta_id: str):
+def obtener_preguntas_encuesta(encuesta_id: str):
     try:
         preguntas = list(preguntas_collection.find({"encuesta_id": encuesta_id}))
         

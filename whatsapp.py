@@ -10,17 +10,17 @@ router = APIRouter(prefix="/api/whatsapp", tags=["WhatsApp"])
 
 #Es para Whatsapp Bussines
 """@router.post("/webhook")
-async def whatsapp_webhook(request: Request):
+def whatsapp_webhook(request: Request):
     
     Webhook para recibir mensajes de WhatsApp
     Formato esperado: [encuesta_id] respuesta1, respuesta2, ...
     Ejemplo: "ENC123 Muy satisfecho, Excelente servicio, 5
     
     try:
-        data = await request.json()"""
+        data = request.json()"""
 
 @router.post("/webhook")
-async def whatsapp_webhook(request: Request):
+def whatsapp_webhook(request: Request):
     """
     Webhook para recibir mensajes de WhatsApp
     Formato esperado: [encuesta_id] respuesta1, respuesta2, ...
@@ -29,7 +29,7 @@ async def whatsapp_webhook(request: Request):
     try:
         # Intentar obtener datos como JSON
         try:
-            data = await request.json()
+            data = request.json()
         except:
             # Si falla el parsing, usar datos de prueba para testing
             data = {
@@ -120,7 +120,7 @@ async def whatsapp_webhook(request: Request):
         )
 
 @router.get("/encuesta/{encuesta_id}/instrucciones")
-async def obtener_instrucciones_whatsapp(encuesta_id: str):
+def obtener_instrucciones_whatsapp(encuesta_id: str):
     """
     Obtiene instrucciones para responder encuesta por WhatsApp
     """

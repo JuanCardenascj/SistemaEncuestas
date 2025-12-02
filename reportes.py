@@ -1,42 +1,63 @@
-from fastapi import APIRouter, HTTPException, status, Response
-from fastapi.responses import StreamingResponse
-from typing import List
-from bson import ObjectId
-from app.database import reportes_collection, encuestas_collection, empresas_collection, usuarios_collection
+# app/routes/reportes.py - VERSIÓN CORREGIDA
+from fastapi import APIRouter, HTTPException, status
+from typing import List, Optional, Dict, Any
+from app.database import reportes_collection, encuestas_collection, respuestas_collection, preguntas_collection
 from app.models.reporte import ReporteCreate, ReporteResponse, FormatoReporte, TipoReporte
-from app.utils.report_generator import ReportGenerator
-from app.routes.respuestas import obtener_estadisticas_encuesta
 from datetime import datetime
+from bson import ObjectId
 import shortuuid
-import io
 
 router = APIRouter(prefix="/api/reportes", tags=["Reportes"])
 
-@router.post("/", response_model=ReporteResponse)
-async def crear_reporte(reporte_data: ReporteCreate):
-    # Verificar que la empresa existe
-    empresa = empresas_collection.find_one({"_id": ObjectId(reporte_data.empresa_id)})
-    if not empresa:
-        raise HTTPException(status_code=404, detail="Empresa no encontrada")
-
-    # Verificar que el usuario existe
-    usuario = usuarios_collection.find_one({"_id": ObjectId(reporte_data.usuario_id)})
-    if not usuario:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-
-    # Verificar que la encuesta existe
-    encuesta = encuestas_collection.find_one({"_id": reporte_data.encuesta_id})
-    if not encuesta:
-        raise HTTPException(status_code=404, detail="Encuesta no encontrada")
-
+def obtener_estadisticas_encuesta(encuesta_id: str) -> Dict[str, Any]:
+    """Función síncrona para obtener estadísticas"""
     try:
-        # Generar ID único
-        reporte_id = shortuuid.uuid()
+        # Contar respuestas
+        total_respuestas = respuestas_collection.count_documents({"encuesta_id": encuesta_id})
         
-        # Obtener estadísticas para el reporte
-        estadisticas = await obtener_estadisticas_encuesta(reporte_data.encuesta_id)
+        # Obtener preguntas
+        preguntas = list(preguntas_collection.find({"encuesta_id": encuesta_id}))
+        
+        estadisticas = {
+            "total_respuestas": total_respuestas,
+            "total_preguntas": len(preguntas),
+            "preguntas": []
+        }
+        
+        # Para cada pregunta, contar respuestas
+        for pregunta in preguntas:
+            respuestas_pregunta = list(respuestas_collection.find({
+                "encuesta_id": encuesta_id,
+                "pregunta_id": str(pregunta["_id"])
+            }))
+            
+            estadisticas["preguntas"].append({
+                "id": str(pregunta["_id"]),
+                "texto": pregunta["texto"],
+                "tipo": pregunta["tipo"],
+                "total_respuestas": len(respuestas_pregunta)
+            })
+        
+        return estadisticas
+    except Exception as e:
+        print(f"Error obteniendo estadísticas: {e}")
+        return {}
+
+@router.post("/", response_model=ReporteResponse)
+def crear_reporte(reporte_data: ReporteCreate):
+    try:
+        # Verificar que la encuesta existe
+        encuesta = encuestas_collection.find_one({"_id": reporte_data.encuesta_id})
+        if not encuesta:
+            raise HTTPException(status_code=404, detail="Encuesta no encontrada")
+
+        # Obtener estadísticas
+        estadisticas = obtener_estadisticas_encuesta(reporte_data.encuesta_id)
         
         # Crear reporte
+        reporte_id = shortuuid.uuid()
+        url_descarga = f"/api/reportes/{reporte_id}/descargar"
+        
         reporte_db = {
             "_id": reporte_id,
             "nombre": reporte_data.nombre,
@@ -46,7 +67,7 @@ async def crear_reporte(reporte_data: ReporteCreate):
             "empresa_id": reporte_data.empresa_id,
             "usuario_id": reporte_data.usuario_id,
             "creado_en": datetime.now(),
-            "url_descarga": f"/api/reportes/{reporte_id}/descargar",
+            "url_descarga": url_descarga,
             "estadisticas": estadisticas
         }
         
@@ -61,52 +82,22 @@ async def crear_reporte(reporte_data: ReporteCreate):
             empresa_id=reporte_data.empresa_id,
             usuario_id=reporte_data.usuario_id,
             creado_en=reporte_db["creado_en"],
-            url_descarga=reporte_db["url_descarga"],
+            url_descarga=url_descarga,
             estadisticas=estadisticas
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error al crear reporte: {str(e)}"
         )
 
-@router.get("/{reporte_id}/descargar")
-async def descargar_reporte(reporte_id: str):
+@router.get("/encuesta/{encuesta_id}", response_model=List[ReporteResponse])
+def obtener_reportes_encuesta(encuesta_id: str):
     try:
-        # Buscar reporte
-        reporte = reportes_collection.find_one({"_id": reporte_id})
-        if not reporte:
-            raise HTTPException(status_code=404, detail="Reporte no encontrado")
-
-        estadisticas = reporte["estadisticas"]
-        formato = reporte["formato"]
-        nombre_archivo = f"{reporte['nombre']}.{formato}"
-
-        # Generar archivo según el formato
-        if formato == "xlsx":
-            buffer = ReportGenerator.generar_excel(estadisticas, nombre_archivo)
-            media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        else:  # PDF
-            buffer = ReportGenerator.generar_pdf(estadisticas, nombre_archivo)
-            media_type = "application/pdf"
-
-        return StreamingResponse(
-            buffer,
-            media_type=media_type,
-            headers={"Content-Disposition": f"attachment; filename={nombre_archivo}"}
-        )
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al descargar reporte: {str(e)}"
-        )
-
-@router.get("/empresa/{empresa_id}", response_model=List[ReporteResponse])
-async def obtener_reportes_empresa(empresa_id: str):
-    try:
-        reportes = list(reportes_collection.find({"empresa_id": ObjectId(empresa_id)}))
+        reportes = list(reportes_collection.find({"encuesta_id": encuesta_id}))
         
         response = []
         for reporte in reportes:
@@ -124,9 +115,35 @@ async def obtener_reportes_empresa(empresa_id: str):
             ))
         
         return response
-
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error al obtener reportes: {str(e)}"
+        )
+
+@router.get("/{reporte_id}", response_model=ReporteResponse)
+def obtener_reporte(reporte_id: str):
+    try:
+        reporte = reportes_collection.find_one({"_id": reporte_id})
+        if not reporte:
+            raise HTTPException(status_code=404, detail="Reporte no encontrado")
+
+        return ReporteResponse(
+            id=str(reporte["_id"]),
+            nombre=reporte["nombre"],
+            tipo=reporte["tipo"],
+            formato=reporte["formato"],
+            encuesta_id=reporte["encuesta_id"],
+            empresa_id=reporte["empresa_id"],
+            usuario_id=reporte["usuario_id"],
+            creado_en=reporte["creado_en"],
+            url_descarga=reporte.get("url_descarga"),
+            estadisticas=reporte.get("estadisticas")
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al obtener reporte: {str(e)}"
         )

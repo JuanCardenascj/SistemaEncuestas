@@ -21,10 +21,3 @@ respuestas_collection = db.respuestas
 reportes_collection = db.reportes
 
 print(f"✅ Conectado a MongoDB Atlas: {DATABASE_NAME}")
-
-# En tus endpoints DEBES usar funciones normales, no async
-# Ejemplo en routers:
-@app.get("/encuestas")
-def get_encuestas():  # NO async def
-    encuestas = list(encuestas_collection.find({}))
-    return encuestas

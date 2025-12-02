@@ -27,7 +27,7 @@ def generar_qr_code(url: str) -> str:
         return None
 
 @router.post("/", response_model=EncuestaResponse)
-async def crear_encuesta(encuesta_data: EncuestaCreate):
+def crear_encuesta(encuesta_data: EncuestaCreate):
     # Verificar que la empresa existe
     empresa = empresas_collection.find_one({"_id": ObjectId(encuesta_data.empresa_id)})
     if not empresa:
@@ -97,7 +97,7 @@ async def crear_encuesta(encuesta_data: EncuestaCreate):
         )
 
 @router.get("/empresa/{empresa_id}", response_model=List[EncuestaResponse])
-async def obtener_encuestas_empresa(empresa_id: str):
+def obtener_encuestas_empresa(empresa_id: str):
     try:
         encuestas = list(encuestas_collection.find({"empresa_id": empresa_id}))
         
@@ -133,7 +133,7 @@ async def obtener_encuestas_empresa(empresa_id: str):
         )
 
 @router.put("/{encuesta_id}", response_model=EncuestaResponse)
-async def actualizar_encuesta(encuesta_id: str, encuesta_data: EncuestaUpdate):
+def actualizar_encuesta(encuesta_id: str, encuesta_data: EncuestaUpdate):
     try:
         # Verificar que la encuesta existe
         encuesta = encuestas_collection.find_one({"_id": encuesta_id})
@@ -192,7 +192,7 @@ async def actualizar_encuesta(encuesta_id: str, encuesta_data: EncuestaUpdate):
         )
 
 @router.delete("/{encuesta_id}")
-async def eliminar_encuesta(encuesta_id: str):
+def eliminar_encuesta(encuesta_id: str):
     try:
         # Verificar que la encuesta existe
         encuesta = encuestas_collection.find_one({"_id": encuesta_id})
@@ -215,7 +215,7 @@ async def eliminar_encuesta(encuesta_id: str):
         )
 
 @router.post("/{encuesta_id}/duplicar", response_model=EncuestaResponse)
-async def duplicar_encuesta(encuesta_id: str):
+def duplicar_encuesta(encuesta_id: str):
     try:
         # Buscar encuesta original
         encuesta_original = encuestas_collection.find_one({"_id": encuesta_id})

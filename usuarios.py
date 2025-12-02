@@ -6,7 +6,7 @@ from datetime import datetime
 router = APIRouter(prefix="/api/usuarios", tags=["Usuarios"])
 
 @router.post("/")
-async def crear_usuario(usuario_data: dict):
+def crear_usuario(usuario_data: dict):
     try:
         usuario_id = ObjectId()
         usuario = {
@@ -23,7 +23,7 @@ async def crear_usuario(usuario_data: dict):
         raise HTTPException(status_code=500, detail=f"Error al crear usuario: {str(e)}")
 
 @router.get("/")
-async def listar_usuarios():
+def listar_usuarios():
     try:
         usuarios = list(usuarios_collection.find())
         return [{"id": str(u["_id"]), "nombre": u.get("nombre", "Sin nombre"), "email": u.get("email", "")} for u in usuarios]

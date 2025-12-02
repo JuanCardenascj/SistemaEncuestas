@@ -8,7 +8,7 @@ import shortuuid
 router = APIRouter(prefix="/api/respuestas", tags=["Respuestas"])
 
 @router.post("/", response_model=RespuestaResponse)
-async def crear_respuesta(respuesta_data: RespuestaCreate):
+def crear_respuesta(respuesta_data: RespuestaCreate):
     # Verificar que la pregunta existe
     pregunta = preguntas_collection.find_one({"_id": respuesta_data.pregunta_id})
     if not pregunta:
@@ -58,7 +58,7 @@ async def crear_respuesta(respuesta_data: RespuestaCreate):
         )
 
 @router.get("/encuesta/{encuesta_id}", response_model=List[RespuestaResponse])
-async def obtener_respuestas_encuesta(encuesta_id: str):
+def obtener_respuestas_encuesta(encuesta_id: str):
     try:
         respuestas = list(respuestas_collection.find({"encuesta_id": encuesta_id}))
         
@@ -82,7 +82,7 @@ async def obtener_respuestas_encuesta(encuesta_id: str):
         )
 
 @router.get("/pregunta/{pregunta_id}", response_model=List[RespuestaResponse])
-async def obtener_respuestas_pregunta(pregunta_id: str):
+def obtener_respuestas_pregunta(pregunta_id: str):
     try:
         respuestas = list(respuestas_collection.find({"pregunta_id": pregunta_id}))
         
@@ -106,7 +106,7 @@ async def obtener_respuestas_pregunta(pregunta_id: str):
         )
 
 @router.get("/encuesta/{encuesta_id}/estadisticas")
-async def obtener_estadisticas_encuesta(encuesta_id: str):
+def obtener_estadisticas_encuesta(encuesta_id: str):
     try:
         # Verificar que la encuesta existe
         encuesta = encuestas_collection.find_one({"_id": encuesta_id})
