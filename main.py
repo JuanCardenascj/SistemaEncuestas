@@ -1,5 +1,5 @@
-from fastapi import FastAPI
 from datetime import datetime
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Importa tus rutas
